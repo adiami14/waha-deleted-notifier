@@ -1,0 +1,23 @@
+services:
+  bot:
+    build: .
+    container_name: waha_deleted_bot
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8001:8000"
+    volumes:
+      - bot_data:/data
+    environment:
+      # These can be overridden here or via .env
+      - MEDIA_DIR=/data/media
+      - DB_PATH=/data/bot.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  bot_data:
+    driver: local

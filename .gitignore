@@ -1,0 +1,37 @@
+# Environment — never commit real credentials
+.env
+.env.local
+
+# Runtime data — contains captured WhatsApp messages and media (PII)
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDE / tooling
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code local settings (contains local IP/permission notes)
+.claude/settings.local.json
+
+# OS
+.DS_Store
+Thumbs.db

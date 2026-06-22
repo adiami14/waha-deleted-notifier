@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Notify Delete — סטטוס{% endblock %}
+
+{% block content %}
+<h1>📵 Notify Delete — סטטוס</h1>
+<div style="margin-bottom:1rem;">
+  <a href="/admin/incidents" class="btn btn-outline">🚨 לוג אירועים</a>
+</div>
+
+{% if error %}
+<div class="flash error" style="margin: 0 0 1rem;">שגיאה: {{ error }}</div>
+{% endif %}
+
+<div class="card" style="margin-bottom:1.5rem;">
+  <h2 style="margin-bottom:1rem; font-size:1.1rem;">הגדרות</h2>
+  <table>
+    <tbody>
+      <tr>
+        <td>התראות על הודעות מארכיון שנמחקו</td>
+        <td>
+          {% if nd_settings.notify_archived %}
+            <span class="badge badge-green">פעיל</span>
+          {% else %}
+            <span class="badge badge-gray">כבוי</span>
+          {% endif %}
+          &nbsp;
+          <form method="post" action="/admin/settings/toggle-archived" style="display:inline;">
+            <button type="submit" class="btn btn-outline btn-sm">
+              {% if nd_settings.notify_archived %}כבה{% else %}הפעל{% endif %}
+            </button>
+          </form>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+{% if status %}
+<div class="card" style="margin-bottom:1.5rem;">
+  <h2 style="margin-bottom:1rem; font-size:1.1rem;">בסיס נתונים</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>מדד</th>
+        <th>ערך</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>סטטוס DB</td>
+        <td>
+          {% if status.db_ok %}
+            <span class="badge badge-green">תקין</span>
+          {% else %}
+            <span class="badge badge-yellow">שגיאה</span>
+            {% if status.db_error %}<small style="color:#721c24"> — {{ status.db_error }}</small>{% endif %}
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>סה"כ הודעות שמורות</td>
+        <td><strong>{{ status.messages_total }}</strong></td>
+      </tr>
+      <tr>
+        <td>הודעות עם מדיה</td>
+        <td>{{ status.messages_with_media }}</td>
+      </tr>
+      <tr>
+        <td>הודעות (24 שעות אחרונות)</td>
+        <td>{{ status.messages_last_24h }}</td>
+      </tr>
+      <tr>
+        <td>צ'אטים מארכיון</td>
+        <td>{{ status.archived_chats }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2 style="margin-bottom:1rem; font-size:1.1rem;">תיקיית מדיה</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>מדד</th>
+        <th>ערך</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>תיקייה קיימת</td>
+        <td>
+          {% if status.media_dir_exists %}
+            <span class="badge badge-green">כן</span>
+          {% else %}
+            <span class="badge badge-gray">לא</span>
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>מספר קבצים</td>
+        <td>{{ status.media_files_count }}</td>
+      </tr>
+      <tr>
+        <td>גודל כולל</td>
+        <td>
+          {% set size_mb = (status.media_size_bytes / 1048576) | round(1) %}
+          {{ size_mb }} MB
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+{% elif not error %}
+<div class="card">
+  <p>אין נתונים מהבוט.</p>
+</div>
+{% endif %}
+{% endblock %}

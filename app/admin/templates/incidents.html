@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+{% block title %}אירועי Notify Delete{% endblock %}
+{% block content %}
+<h1>🚨 אירועי Notify Delete</h1>
+
+{# ── Filters ── #}
+<div class="card" style="padding:1rem">
+  <form method="get" action="/admin/incidents" class="form-row" style="align-items:flex-end; gap:0.75rem;">
+    <div class="form-group">
+      <label for="status">סטטוס</label>
+      <select name="status" id="status" style="padding:0.4rem 0.65rem; border:1px solid #ccc; border-radius:5px; font-size:0.9rem; font-family:inherit;">
+        <option value="" {% if not filter_status %}selected{% endif %}>הכל</option>
+        <option value="open"     {% if filter_status == 'open' %}selected{% endif %}>Open</option>
+        <option value="resolved" {% if filter_status == 'resolved' %}selected{% endif %}>Resolved</option>
+        <option value="ignored"  {% if filter_status == 'ignored' %}selected{% endif %}>Ignored</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">סנן</button>
+    {% if filter_status %}
+      <a href="/admin/incidents" class="btn btn-outline btn-sm">נקה</a>
+    {% endif %}
+  </form>
+</div>
+
+{% if error %}
+<div class="flash error">{{ error }}</div>
+{% endif %}
+
+{# ── Table ── #}
+{% if not rows %}
+<div class="card">
+  <p style="color:#666;">אין אירועים{% if filter_status %} בסטטוס {{ filter_status }}{% endif %}.</p>
+</div>
+{% else %}
+<div class="card" style="padding:0">
+  <div class="table-scroll">
+    <table id="inc-table">
+      <thead>
+        <tr>
+          <th style="width:2rem;"></th>
+          <th>תאריך</th>
+          <th>סוג</th>
+          <th>הודעה / צ'אט</th>
+          <th>פרטי שגיאה</th>
+          <th>סטטוס</th>
+          <th>פעולות</th>
+        </tr>
+      </thead>
+      <tbody id="inc-tbody">
+        {% for row in rows %}
+        <tr data-id="{{ row.id }}">
+          <td class="drag-handle" title="גרור לשינוי עדיפות" style="cursor:grab; text-align:center; color:#bbb; font-size:1.1rem; user-select:none; padding:0.4rem 0.5rem;">⠿</td>
+          <td style="white-space:nowrap; font-size:0.8rem; color:#666;">{{ row.occurred_at }}</td>
+          <td>
+            {% if row.incident_type == 'not_sent' %}
+              <span class="badge badge-yellow">לא נשלח</span>
+            {% elif row.incident_type == 'thumbs_down' %}
+              <span class="badge badge-gray">👎 תגובה</span>
+            {% elif row.incident_type == 'error' %}
+              <span class="badge" style="background:#f8d7da; color:#721c24;">שגיאה</span>
+            {% else %}
+              <span class="badge badge-gray">{{ row.incident_type }}</span>
+            {% endif %}
+          </td>
+          <td style="font-size:0.8rem; max-width:200px; word-break:break-word;">
+            {% if row.message_id %}
+              <div style="color:#555;">ID: {{ row.message_id[:20] }}{% if row.message_id|length > 20 %}…{% endif %}</div>
+            {% endif %}
+            {% if row.chat_id %}
+              <div style="color:#888; font-size:0.75rem;">{{ row.chat_id }}</div>
+            {% endif %}
+          </td>
+          <td style="font-size:0.8rem; max-width:220px; word-break:break-word; color:#721c24;">
+            {% if row.notification_text %}
+              <div>{{ row.notification_text[:60] }}{% if row.notification_text|length > 60 %}…{% endif %}</div>
+            {% endif %}
+            {% if row.error_detail %}
+              <div style="color:#888; font-size:0.75rem;">{{ row.error_detail[:80] }}</div>
+            {% endif %}
+          </td>
+          <td>
+            {% if row.status == 'open' %}
+              <span class="badge badge-yellow">open</span>
+            {% elif row.status == 'resolved' %}
+              <span class="badge badge-green">resolved</span>
+            {% else %}
+              <span class="badge badge-gray">ignored</span>
+            {% endif %}
+          </td>
+          <td class="actions">
+            <button class="btn btn-outline btn-sm"
+                    onclick="openModal('{{ row.id }}', '{{ (row.notification_text or '') | replace("'", "\\'") | replace('\n', '\\n') }}', '{{ (row.error_detail or '') | replace("'", "\\'") }}', '{{ (row.admin_note or '') | replace("'", "\\'") }}', '{{ row.status }}', '{{ row.incident_type }}', '{{ row.message_id or '' }}', '{{ row.chat_id or '' }}', '{{ row.sender_jid or '' }}')">
+              פרטים
+            </button>
+            {% if row.status == 'open' %}
+            <form method="post" action="/admin/incidents/{{ row.id }}/resolve" style="display:inline;">
+              <button type="submit" class="btn btn-primary btn-sm">✓ Resolve</button>
+            </form>
+            <form method="post" action="/admin/incidents/{{ row.id }}/ignore" style="display:inline;">
+              <button type="submit" class="btn btn-outline btn-sm" style="color:#888;">Ignore</button>
+            </form>
+            {% else %}
+            <form method="post" action="/admin/incidents/{{ row.id }}/unresolve" style="display:inline;">
+              <button type="submit" class="btn btn-outline btn-sm" style="color:#c07800;">↩ Unresolve</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{# ── Detail Modal ── #}
+<div id="incidentModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1000; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:8px; max-width:620px; width:95%; max-height:90vh; overflow-y:auto; padding:1.5rem; position:relative; direction:rtl;">
+    <button onclick="closeModal()" style="position:absolute; top:0.75rem; left:0.75rem; background:none; border:none; font-size:1.4rem; cursor:pointer; color:#666;">&times;</button>
+    <h2 style="font-size:1.1rem; margin-bottom:1rem;">פרטי אירוע</h2>
+
+    <div style="margin-bottom:0.75rem;">
+      <strong>סוג:</strong> <span id="modal-type" style="font-weight:400;"></span>
+      &nbsp;&nbsp;<strong>סטטוס:</strong> <span id="modal-status" style="font-weight:400;"></span>
+    </div>
+    <div style="margin-bottom:0.75rem;">
+      <strong>ID הודעה:</strong> <span id="modal-msgid" style="font-weight:400; font-size:0.85rem; word-break:break-all;"></span>
+    </div>
+    <div style="margin-bottom:0.75rem;">
+      <strong>צ'אט:</strong> <span id="modal-chatid" style="font-weight:400; font-size:0.85rem;"></span>
+    </div>
+    <div style="margin-bottom:0.75rem;">
+      <strong>שולח:</strong> <span id="modal-sender" style="font-weight:400; font-size:0.85rem;"></span>
+    </div>
+
+    <div id="modal-notification-wrap" style="margin-bottom:0.75rem; display:none;">
+      <strong>טקסט ההתראה:</strong>
+      <pre id="modal-notification" style="background:#f5f5f5; padding:0.6rem; border-radius:4px; font-family:inherit; font-size:0.85rem; white-space:pre-wrap; margin-top:0.3rem;"></pre>
+    </div>
+
+    <div id="modal-error-wrap" style="margin-bottom:0.75rem; display:none;">
+      <strong>פרטי שגיאה:</strong>
+      <pre id="modal-error" style="background:#fff3cd; padding:0.6rem; border-radius:4px; font-family:inherit; font-size:0.85rem; white-space:pre-wrap; margin-top:0.3rem; color:#856404;"></pre>
+    </div>
+
+    <div style="margin-bottom:1rem;">
+      <label for="modal-note" style="font-weight:600; font-size:0.85rem; color:#555;">הערת מנהל:</label>
+      <textarea id="modal-note" rows="3"
+                style="width:100%; margin-top:0.3rem; padding:0.4rem 0.65rem; border:1px solid #ccc; border-radius:5px; font-family:inherit; font-size:0.9rem; resize:vertical;"
+                placeholder="הערה אופציונלית…"></textarea>
+    </div>
+
+    <div id="modal-actions" class="actions" style="justify-content:flex-start;"></div>
+  </div>
+</div>
+
+<style>
+  #inc-tbody tr { transition: background 0.15s; }
+  #inc-tbody tr.drag-over { background: #e8f0fe !important; outline: 2px dashed #1a73e8; outline-offset: -2px; }
+  #inc-tbody tr.dragging  { opacity: 0.45; }
+  .drag-handle:hover { color: #888; }
+</style>
+
+<script>
+  var _currentId = null;
+
+  function openModal(id, notifText, errorDetail, adminNote, status, type, msgId, chatId, senderJid) {
+    _currentId = id;
+    document.getElementById('modal-type').textContent = type;
+    document.getElementById('modal-status').textContent = status;
+    document.getElementById('modal-msgid').textContent = msgId || '—';
+    document.getElementById('modal-chatid').textContent = chatId || '—';
+    document.getElementById('modal-sender').textContent = senderJid || '—';
+    document.getElementById('modal-note').value = adminNote;
+
+    var notifEl = document.getElementById('modal-notification');
+    var notifWrap = document.getElementById('modal-notification-wrap');
+    if (notifText) {
+      notifEl.textContent = notifText.replace(/\\n/g, '\n');
+      notifWrap.style.display = '';
+    } else {
+      notifWrap.style.display = 'none';
+    }
+
+    var errEl = document.getElementById('modal-error');
+    var errWrap = document.getElementById('modal-error-wrap');
+    if (errorDetail) {
+      errEl.textContent = errorDetail;
+      errWrap.style.display = '';
+    } else {
+      errWrap.style.display = 'none';
+    }
+
+    var actionsEl = document.getElementById('modal-actions');
+    var saveNoteHtml =
+      '<form method="post" action="/admin/incidents/' + id + '/note" style="display:inline;">' +
+        '<input type="hidden" name="note" id="save-note-' + id + '">' +
+        '<button type="submit" class="btn btn-outline btn-sm"' +
+          ' onclick="document.getElementById(\'save-note-' + id + '\').value=document.getElementById(\'modal-note\').value">' +
+          '💾 שמור הערה' +
+        '</button>' +
+      '</form> ';
+    if (status === 'open') {
+      actionsEl.innerHTML = saveNoteHtml +
+        '<form method="post" action="/admin/incidents/' + id + '/resolve" style="display:inline;">' +
+          '<input type="hidden" name="note" id="resolve-note-' + id + '">' +
+          '<button type="submit" class="btn btn-primary btn-sm" onclick="document.getElementById(\'resolve-note-' + id + '\').value=document.getElementById(\'modal-note\').value">✓ Resolve</button>' +
+        '</form> ' +
+        '<form method="post" action="/admin/incidents/' + id + '/ignore" style="display:inline;">' +
+          '<input type="hidden" name="note" id="ignore-note-' + id + '">' +
+          '<button type="submit" class="btn btn-outline btn-sm" style="color:#888;" onclick="document.getElementById(\'ignore-note-' + id + '\').value=document.getElementById(\'modal-note\').value">Ignore</button>' +
+        '</form>';
+    } else {
+      actionsEl.innerHTML = saveNoteHtml +
+        '<form method="post" action="/admin/incidents/' + id + '/unresolve" style="display:inline;">' +
+          '<button type="submit" class="btn btn-outline btn-sm" style="color:#c07800;">↩ Unresolve</button>' +
+        '</form>';
+    }
+
+    document.getElementById('incidentModal').style.display = 'flex';
+  }
+
+  function closeModal() {
+    document.getElementById('incidentModal').style.display = 'none';
+    _currentId = null;
+  }
+
+  document.getElementById('incidentModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  // ── Drag-and-drop reordering ──────────────────────────────────────────────
+  (function() {
+    var tbody = document.getElementById('inc-tbody');
+    if (!tbody) return;
+    var dragSrc = null;
+
+    function getRows() { return Array.from(tbody.querySelectorAll('tr')); }
+
+    tbody.querySelectorAll('tr').forEach(function(tr) {
+      tr.setAttribute('draggable', 'true');
+
+      tr.addEventListener('dragstart', function(e) {
+        dragSrc = tr;
+        tr.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', tr.dataset.id);
+      });
+
+      tr.addEventListener('dragend', function() {
+        tr.classList.remove('dragging');
+        tbody.querySelectorAll('tr').forEach(function(r) { r.classList.remove('drag-over'); });
+      });
+
+      tr.addEventListener('dragover', function(e) {
+        if (tr === dragSrc) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        tbody.querySelectorAll('tr').forEach(function(r) { r.classList.remove('drag-over'); });
+        tr.classList.add('drag-over');
+      });
+
+      tr.addEventListener('dragleave', function() {
+        tr.classList.remove('drag-over');
+      });
+
+      tr.addEventListener('drop', function(e) {
+        e.preventDefault();
+        if (!dragSrc || dragSrc === tr) return;
+        tr.classList.remove('drag-over');
+
+        var rows   = getRows();
+        var srcIdx = rows.indexOf(dragSrc);
+        var dstIdx = rows.indexOf(tr);
+        if (srcIdx < dstIdx) {
+          tbody.insertBefore(dragSrc, tr.nextSibling);
+        } else {
+          tbody.insertBefore(dragSrc, tr);
+        }
+
+        var ids = getRows().map(function(r) { return r.dataset.id; });
+        fetch('/admin/incidents/reorder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ ids: ids })
+        });
+      });
+    });
+  })();
+</script>
+{% endblock %}
