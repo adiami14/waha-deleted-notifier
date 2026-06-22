@@ -2,18 +2,18 @@
 
 A production-ready Python/FastAPI service that listens to [WAHA](https://waha.devlike.pro/) webhook events and sends Hebrew-language notifications to a WhatsApp group whenever a message is deleted.
 
-> **Disclaimer — WAHA Plus/Pro recommended**
+> **Disclaimer — WAHA Plus/Pro required for full functionality**
 >
-> WAHA Core (free) includes webhooks, media download, and all three engines (WEBJS, NOWEB, GOWS).
-> However, **Core is limited to a single WhatsApp session**, and this bot requires two:
+> WAHA Core (free) includes webhooks, media download, and all three engines (WEBJS, NOWEB, GOWS),
+> but this bot requires two capabilities that are **Plus/Pro only**:
 >
-> | Session | Role |
+> | Limitation | Detail |
 > |---|---|
-> | `WAHA_LISTEN_SESSION` | The account being monitored for deletions |
-> | `WAHA_NOTIFY_SESSION` | The account that sends notifications to the group |
+> | **Single session** | Core allows only one WhatsApp session; this bot needs two (`WAHA_LISTEN_SESSION` to monitor + `WAHA_NOTIFY_SESSION` to send notifications) |
+> | **Sending images & files** | `POST /api/sendImage` and `POST /api/sendFile` are Plus/Pro only — on Core, notifications fall back to text-only |
 >
-> Running both in one WAHA container requires **WAHA Plus or Pro**.
-> Alternatively, you can run two separate WAHA Core instances (one per session) if you prefer to stay on the free tier.
+> With **WAHA Core** the bot will still work, but notifications will always be text-only (no media attachments), and you must run two separate WAHA Core instances (one per session).
+> With **WAHA Plus/Pro** you get full functionality: media attachments forwarded and both sessions in one container.
 >
 > See the [WAHA pricing page](https://waha.devlike.pro/) for details.
 
